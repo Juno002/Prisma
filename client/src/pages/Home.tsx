@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { migrateLegacyLocalStorage } from "@/persistence/db";
 
 type Section = "Resumen" | "Movimientos" | "Plan" | "Reportes";
 type EntryKind = "Gasto" | "Ingreso" | "Transferencia";
@@ -284,6 +285,10 @@ export default function Home() {
 
   useEffect(() => {
     localStorage.setItem("glitchbudget.transactions", JSON.stringify(transactions));
+  }, [transactions]);
+
+  useEffect(() => {
+    void migrateLegacyLocalStorage();
   }, [transactions]);
 
   const handleSave = ({ title, amount, kind }: { title: string; amount: number; kind: EntryKind }) => {
