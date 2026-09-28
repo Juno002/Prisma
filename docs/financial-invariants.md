@@ -1,4 +1,4 @@
-# GlitchBudget Pro — Invariantes financieras
+# Prisma — Invariantes financieras
 
 ## Dinero
 
