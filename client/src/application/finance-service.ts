@@ -1,5 +1,4 @@
-import type { FinanceState, TransactionKind } from "@/domain/entities";
-import { moneyFromMajorUnits } from "@/domain/money";
+import type { FinanceState } from "@/domain/entities";
 import {
   db,
   migrateLegacyLocalStorage,
@@ -8,17 +7,6 @@ import {
   type LegacyTransaction,
   type PersistedState,
 } from "@/persistence/db";
-
-export type CreateTransactionInput = {
-  id: string;
-  date: string;
-  amount: number;
-  kind: TransactionKind;
-  accountId?: string;
-  destinationAccountId?: string;
-  categoryId?: string;
-  note?: string;
-};
 
 export async function loadFinanceState(seed: LegacyTransaction[]): Promise<PersistedState> {
   await migrateLegacyLocalStorage();
@@ -35,22 +23,6 @@ export async function loadFinanceState(seed: LegacyTransaction[]): Promise<Persi
     ]);
   });
   return readState();
-}
-
-export async function createTransaction(input: CreateTransactionInput): Promise<void> {
-  const now = new Date().toISOString();
-  await db.transactions.add({
-    id: input.id,
-    date: input.date,
-    amount: moneyFromMajorUnits(Math.abs(input.amount)),
-    kind: input.kind,
-    accountId: input.accountId,
-    destinationAccountId: input.destinationAccountId,
-    categoryId: input.categoryId,
-    note: input.note,
-    createdAt: now,
-    updatedAt: now,
-  });
 }
 
 export async function reloadFinanceState(): Promise<FinanceState> {

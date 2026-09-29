@@ -35,3 +35,14 @@
 - `spending`: gastos realizados, incluidos los hechos con crédito.
 - `cashFlow`: ingresos en efectivo menos gastos en efectivo menos pagos de deuda.
 - `availableToPlan`: concepto de planificación; no equivale al saldo bancario.
+
+## Fase 3 — comandos y políticas
+
+Las mutaciones financieras pasan por comandos explícitos (`createIncome`, `createExpense`, `createTransfer`, `createDebtPayment`, `updateTransaction` y `deleteTransaction`). La UI no escribe directamente en Dexie.
+
+Las políticas son independientes:
+
+- `preventNegativeAccountBalance`: puede bloquear una operación que deje una cuenta líquida por debajo de cero.
+- `budgetOverspendingBehavior`: puede permitir, advertir o bloquear un gasto que supere el presupuesto vigente.
+
+Una advertencia de presupuesto no altera el ledger ni convierte el gasto en una operación distinta; solo informa al usuario. Archivar cuentas y categorías conserva sus IDs y referencias históricas.

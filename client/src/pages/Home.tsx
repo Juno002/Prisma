@@ -26,13 +26,23 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createTransaction, loadFinanceState, reloadFinanceState } from "@/application/finance-service";
+import { loadFinanceState, reloadFinanceState } from "@/application/finance-service";
+import { createExpense, createIncome, createTransfer } from "@/application/commands";
 import { accountBalance, deriveMetrics, liabilities } from "@/domain/ledger";
 import { moneyToMajorUnits } from "@/domain/money";
 import type { LegacyTransaction, PersistedState } from "@/persistence/db";
 
 type Section = "Resumen" | "Movimientos" | "Plan" | "Reportes";
 type EntryKind = "Gasto" | "Ingreso" | "Transferencia";
+
+type MovementFormEntry = {
+  title: string;
+  amount: number;
+  kind: EntryKind;
+  accountId: string;
+  destinationAccountId?: string;
+  categoryId?: string;
+};
 
 type Transaction = {
   id: string;
@@ -175,12 +185,17 @@ function ReportsView() {
   return <><SectionHeading eyebrow="Análisis" title="Reportes" description="Entiende tus tendencias sin perder de vista lo importante." action={<button className="filter-button">Septiembre 2026 <ChevronDown size={15} /></button>} /><div className="report-highlight"><div><p className="eyebrow">Gasto mensual</p><strong>RD$ 11,520</strong><span><span className="positive-trend"><ArrowDownRight size={14} /> 6.8%</span> vs. promedio mensual</span></div><div className="report-chart">{chartBars.map((bar) => <div className="chart-column" key={bar.label}><div className={`chart-bar ${bar.active ? "active" : ""}`} style={{ height: `${bar.value}%` }} /><span>{bar.label}</span></div>)}</div></div><div className="report-grid"><section className="panel"><div className="panel-header"><div><p className="eyebrow">Distribución</p><h2>Por categoría</h2></div><button className="more-button"><MoreHorizontal size={18} /></button></div><div className="donut-layout"><div className="donut-chart"><div><strong>RD$ 11.5k</strong><span>total</span></div></div><div className="donut-legend"><span><i style={{ background: "#ea6959" }} /> Vivienda <b>43%</b></span><span><i style={{ background: "#84b6a7" }} /> Alimentación <b>27%</b></span><span><i style={{ background: "#8a84b6" }} /> Transporte <b>16%</b></span><span><i style={{ background: "#e3c27a" }} /> Otros <b>14%</b></span></div></div></section><section className="panel insight-panel"><div className="insight-kicker"><Sparkles size={16} /> Lectura rápida</div><h2>Vas en buen ritmo</h2><p>Tu gasto está un <strong>6.8% por debajo</strong> de tu promedio de los últimos 3 meses. Alimentación es la categoría con más movimiento esta semana.</p><button className="wide-secondary" onClick={() => toast.info("Los reportes comparativos serán parte de la Fase 2.")}>Explorar reportes <ArrowUpRight size={15} /></button></section></div></>;
 }
 
-function NewMovementModal({ onClose, onSave }: { onClose: () => void; onSave: (entry: { title: string; amount: number; kind: EntryKind }) => void }) {
+function NewMovementModal({ state, onClose, onSave }: { state: PersistedState; onClose: () => void; onSave: (entry: MovementFormEntry) => void }) {
   const [kind, setKind] = useState<EntryKind>("Gasto");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
+  const activeAccounts = state.accounts.filter((account) => !account.archived);
+  const activeCategories = state.categories.filter((category) => !category.archived);
+  const [accountId, setAccountId] = useState(activeAccounts[0]?.id ?? "");
+  const [destinationAccountId, setDestinationAccountId] = useState(activeAccounts[1]?.id ?? activeAccounts[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState(activeCategories.find((category) => category.type !== "income")?.id ?? "");
   const canSave = title.trim().length > 0 && Number(amount) > 0;
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="movement-modal" role="dialog" aria-modal="true" aria-labelledby="movement-title"><div className="modal-header"><div><p className="eyebrow">Acción global</p><h2 id="movement-title">Nuevo movimiento</h2></div><button className="icon-button quiet" onClick={onClose} aria-label="Cerrar"><X size={18} /></button></div><div className="kind-toggle" role="tablist" aria-label="Tipo de movimiento">{(["Gasto", "Ingreso", "Transferencia"] as EntryKind[]).map((item) => <button key={item} className={kind === item ? "active" : ""} onClick={() => setKind(item)} role="tab" aria-selected={kind === item}>{item}</button>)}</div><label className="form-label">Monto<input autoFocus value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" inputMode="decimal" /></label><label className="form-label">Descripción<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kind === "Transferencia" ? "Cuenta de origen → destino" : "¿Qué ocurrió?"} /></label><div className="form-grid"><label className="form-label">Cuenta<select defaultValue="qik"><option value="qik">Qik</option><option value="apap">APAP</option><option value="cash">Efectivo</option></select></label><label className="form-label">Categoría<select defaultValue="food"><option value="food">Alimentación</option><option value="home">Vivienda</option><option value="transport">Transporte</option><option value="other">Otros</option></select></label></div><button className="primary-button modal-save" disabled={!canSave} onClick={() => onSave({ title: title.trim(), amount: Number(amount), kind })}><Check size={17} /> Guardar movimiento</button><p className="modal-note">Guardado localmente en este dispositivo.</p></div></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="movement-modal" role="dialog" aria-modal="true" aria-labelledby="movement-title"><div className="modal-header"><div><p className="eyebrow">Acción global</p><h2 id="movement-title">Nuevo movimiento</h2></div><button className="icon-button quiet" onClick={onClose} aria-label="Cerrar"><X size={18} /></button></div><div className="kind-toggle" role="tablist" aria-label="Tipo de movimiento">{(["Gasto", "Ingreso", "Transferencia"] as EntryKind[]).map((item) => <button key={item} className={kind === item ? "active" : ""} onClick={() => setKind(item)} role="tab" aria-selected={kind === item}>{item}</button>)}</div><label className="form-label">Monto<input autoFocus value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" inputMode="decimal" /></label><label className="form-label">Descripción<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={kind === "Transferencia" ? "Cuenta de origen → destino" : "¿Qué ocurrió?"} /></label><div className="form-grid"><label className="form-label">Cuenta<select value={accountId} onChange={(event) => setAccountId(event.target.value)}>{activeAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>{kind === "Transferencia" ? <label className="form-label">Destino<select value={destinationAccountId} onChange={(event) => setDestinationAccountId(event.target.value)}>{activeAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label> : <label className="form-label">Categoría<select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>{activeCategories.filter((category) => category.type !== "income").map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>}</div>{kind !== "Transferencia" && <p className="modal-note">La cuenta seleccionada será la que reciba o pague el movimiento.</p>}<button className="primary-button modal-save" disabled={!canSave || !accountId} onClick={() => onSave({ title: title.trim(), amount: Number(amount), kind, accountId, destinationAccountId: kind === "Transferencia" ? destinationAccountId : undefined, categoryId: kind === "Ingreso" ? activeCategories.find((category) => category.type === "income")?.id ?? categoryId : categoryId })}><Check size={17} /> Guardar movimiento</button><p className="modal-note">Guardado localmente en este dispositivo.</p></div></div>;
 }
 
 export default function Home() {
@@ -198,16 +213,17 @@ export default function Home() {
     };
   }, []);
 
-  const handleSave = async ({ title, amount, kind }: { title: string; amount: number; kind: EntryKind }) => {
-    const isIncome = kind === "Ingreso";
-    const isTransfer = kind === "Transferencia";
-    const accountId = state?.accounts.find((account) => account.name === "Qik")?.id;
-    const destinationAccountId = state?.accounts.find((account) => account.name === "APAP")?.id;
-    const categoryId = state?.categories.find((category) => category.name === (isIncome ? "Ingreso" : "Otros"))?.id;
-    await createTransaction({ id: `tx-${Date.now()}`, date: new Date().toISOString().slice(0, 10), amount, kind: isIncome ? "income" : isTransfer ? "transfer" : "expense", accountId, destinationAccountId: isTransfer ? destinationAccountId : undefined, categoryId, note: title });
-    setState(await reloadFinanceState());
-    setShowModal(false);
-    toast.success("Movimiento guardado localmente", { description: `${title} · ${formatCurrency(amount)}` });
+  const handleSave = async ({ title, amount, kind, accountId, destinationAccountId, categoryId }: MovementFormEntry) => {
+    try {
+      const input = { id: `tx-${Date.now()}`, date: new Date().toISOString().slice(0, 10), amount, accountId, destinationAccountId, categoryId, note: title };
+      const result = kind === "Ingreso" ? await createIncome(input) : kind === "Transferencia" ? await createTransfer(input) : await createExpense(input);
+      setState(await reloadFinanceState());
+      setShowModal(false);
+      toast.success("Movimiento guardado localmente", { description: `${title} · ${formatCurrency(amount)}` });
+      result.warnings?.forEach((warning) => toast.warning(warning));
+    } catch (error) {
+      toast.error("No se pudo guardar el movimiento", { description: error instanceof Error ? error.message : "Revisa los datos e inténtalo de nuevo." });
+    }
   };
 
   const goTo = (section: Section) => setActiveSection(section);
@@ -215,5 +231,5 @@ export default function Home() {
   const transactions = state ? toViewTransactions(state) : initialTransactions;
   const metrics = deriveMetrics(canonicalState);
 
-  return <div className="app-shell"><aside className="sidebar"><div className="brand"><LogoMark /><div><strong>Prisma</strong><span>PRIVADO / LOCAL</span></div></div><div className="sidebar-context"><span className="context-label">Espacio personal</span><button>Alex Rivera <ChevronDown size={14} /></button></div><nav className="primary-nav" aria-label="Navegación principal">{navItems.map(({ label, icon: Icon }) => <button key={label} className={activeSection === label ? "active" : ""} onClick={() => goTo(label)}><Icon size={18} /><span>{label}</span>{label === "Plan" && <i className="nav-badge">3</i>}</button>)}</nav><div className="sidebar-bottom"><div className="offline-card"><div className="offline-icon"><Check size={14} /></div><div><strong>Solo en tu dispositivo</strong><span>Datos privados y offline</span></div></div><button className="secondary-nav-button" onClick={() => toast.info("Ajustes estarán disponibles en una siguiente fase.")}><Settings2 size={17} /> Ajustes</button><button className="secondary-nav-button" onClick={() => toast.info("Tu backup local estará disponible desde Ajustes.")}><Download size={17} /> Backup</button><div className="user-profile"><div className="avatar">AR</div><div><strong>Alex Rivera</strong><span>Plan personal</span></div><MoreHorizontal size={18} /></div></div></aside><main className="main-content"><header className="mobile-header"><button className="mobile-menu icon-button quiet" aria-label="Abrir menú"><Menu size={20} /></button><div className="brand mobile-brand"><LogoMark /><strong>Prisma</strong></div><button className="icon-button quiet notification-button" aria-label="Notificaciones"><Bell size={18} /><span /></button></header><div className="content-wrap">{activeSection === "Resumen" && <SummaryView transactions={transactions} metrics={metrics} state={canonicalState} onNewMovement={() => setShowModal(true)} onSeeAll={() => goTo("Movimientos")} />}{activeSection === "Movimientos" && <TransactionsView transactions={transactions} onNewMovement={() => setShowModal(true)} />}{activeSection === "Plan" && <PlanView onNewMovement={() => setShowModal(true)} />}{activeSection === "Reportes" && <ReportsView />}</div></main><nav className="mobile-nav" aria-label="Navegación móvil">{navItems.map(({ label, icon: Icon }) => <button key={label} className={activeSection === label ? "active" : ""} onClick={() => goTo(label)}><Icon size={19} /><span>{label}</span></button>)}</nav>{showModal && <NewMovementModal onClose={() => setShowModal(false)} onSave={handleSave} />}<button className="mobile-fab" onClick={() => setShowModal(true)} aria-label="Nuevo movimiento"><Plus size={22} /></button></div>;
+  return <div className="app-shell"><aside className="sidebar"><div className="brand"><LogoMark /><div><strong>Prisma</strong><span>PRIVADO / LOCAL</span></div></div><div className="sidebar-context"><span className="context-label">Espacio personal</span><button>Alex Rivera <ChevronDown size={14} /></button></div><nav className="primary-nav" aria-label="Navegación principal">{navItems.map(({ label, icon: Icon }) => <button key={label} className={activeSection === label ? "active" : ""} onClick={() => goTo(label)}><Icon size={18} /><span>{label}</span>{label === "Plan" && <i className="nav-badge">3</i>}</button>)}</nav><div className="sidebar-bottom"><div className="offline-card"><div className="offline-icon"><Check size={14} /></div><div><strong>Solo en tu dispositivo</strong><span>Datos privados y offline</span></div></div><button className="secondary-nav-button" onClick={() => toast.info("Ajustes estarán disponibles en una siguiente fase.")}><Settings2 size={17} /> Ajustes</button><button className="secondary-nav-button" onClick={() => toast.info("Tu backup local estará disponible desde Ajustes.")}><Download size={17} /> Backup</button><div className="user-profile"><div className="avatar">AR</div><div><strong>Alex Rivera</strong><span>Plan personal</span></div><MoreHorizontal size={18} /></div></div></aside><main className="main-content"><header className="mobile-header"><button className="mobile-menu icon-button quiet" aria-label="Abrir menú"><Menu size={20} /></button><div className="brand mobile-brand"><LogoMark /><strong>Prisma</strong></div><button className="icon-button quiet notification-button" aria-label="Notificaciones"><Bell size={18} /><span /></button></header><div className="content-wrap">{activeSection === "Resumen" && <SummaryView transactions={transactions} metrics={metrics} state={canonicalState} onNewMovement={() => setShowModal(true)} onSeeAll={() => goTo("Movimientos")} />}{activeSection === "Movimientos" && <TransactionsView transactions={transactions} onNewMovement={() => setShowModal(true)} />}{activeSection === "Plan" && <PlanView onNewMovement={() => setShowModal(true)} />}{activeSection === "Reportes" && <ReportsView />}</div></main><nav className="mobile-nav" aria-label="Navegación móvil">{navItems.map(({ label, icon: Icon }) => <button key={label} className={activeSection === label ? "active" : ""} onClick={() => goTo(label)}><Icon size={19} /><span>{label}</span></button>)}</nav>{showModal && state && <NewMovementModal state={state} onClose={() => setShowModal(false)} onSave={handleSave} />}<button className="mobile-fab" onClick={() => setShowModal(true)} aria-label="Nuevo movimiento"><Plus size={22} /></button></div>;
 }
