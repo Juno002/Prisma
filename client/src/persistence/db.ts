@@ -109,7 +109,7 @@ export type LegacyTransaction = {
 };
 
 export function migrateLegacyTransactions(raw: LegacyTransaction[]): PersistedState {
-  const accountNames = Array.from(new Set(raw.map((item) => item.account.split(" → ")[0])));
+  const accountNames = Array.from(new Set(raw.flatMap((item) => item.account.split(" → "))));
   const accounts: Account[] = accountNames.map((name, index) => ({
     id: `legacy-account-${index + 1}`,
     name,
@@ -126,7 +126,7 @@ export function migrateLegacyTransactions(raw: LegacyTransaction[]): PersistedSt
   const accountIdFor = (name: string) => accounts.find((account) => account.name === name)?.id;
   const categoryIdFor = (name: string) => categories.find((category) => category.name === name)?.id;
   const transactions: Transaction[] = raw.map((item) => {
-    const kind = item.kind === "Ingreso" ? "income" : item.kind === "Transferencia" ? "debt-payment" : "expense";
+    const kind = item.kind === "Ingreso" ? "income" : item.kind === "Transferencia" ? "transfer" : "expense";
     const [accountName, destinationName] = item.account.split(" → ");
     return {
       id: item.id,

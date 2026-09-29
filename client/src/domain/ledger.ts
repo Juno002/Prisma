@@ -1,5 +1,5 @@
 import type { Account, FinanceState, Transaction } from "./entities";
-import { addMoney, moneyFromCents, negateMoney } from "./money";
+import { addMoney, moneyFromCents, negateMoney, subtractMoney } from "./money";
 import type { Money } from "./money";
 
 export type LedgerMetrics = {
@@ -14,6 +14,7 @@ function accountDelta(transaction: Transaction, accountId: string): Money {
   if (transaction.kind === "income" && transaction.accountId === accountId) return amount;
   if (transaction.kind === "expense" && transaction.accountId === accountId) return negateMoney(amount);
   if (transaction.kind === "debt-payment" && transaction.accountId === accountId) return negateMoney(amount);
+  if (transaction.kind === "debt-payment" && transaction.liabilityAccountId === accountId) return amount;
   if (transaction.kind === "investment" && transaction.accountId === accountId) return negateMoney(amount);
   if (transaction.kind === "transfer" && transaction.accountId === accountId) return negateMoney(amount);
   if (transaction.kind === "transfer" && transaction.destinationAccountId === accountId) return amount;
@@ -60,7 +61,7 @@ export function liabilities(state: FinanceState): Money {
 }
 
 export function netWorth(state: FinanceState): Money {
-  return addMoney(liquidPosition(state), liabilities(state));
+  return subtractMoney(liquidPosition(state), liabilities(state));
 }
 
 export function deriveMetrics(state: FinanceState): LedgerMetrics {
