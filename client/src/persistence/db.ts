@@ -1,4 +1,5 @@
 import Dexie, { type Table } from "dexie";
+import { stableCategoryId } from "@/domain/categories";
 import type { Account, Budget, Category, Goal, Transaction } from "@/domain/entities";
 import { moneyFromCents, moneyFromMajorUnits } from "@/domain/money";
 
@@ -108,7 +109,7 @@ export type LegacyTransaction = {
   kind: "Gasto" | "Ingreso" | "Transferencia";
 };
 
-export function migrateLegacyTransactions(raw: LegacyTransaction[]): PersistedState {
+export function migrateLegacyTransactions(raw: LegacyTransaction[], existingCategories: Category[] = []): PersistedState {
   const accountNames = Array.from(new Set(raw.flatMap((item) => item.account.split(" → "))));
   const accounts: Account[] = accountNames.map((name, index) => ({
     id: `legacy-account-${index + 1}`,
@@ -117,12 +118,11 @@ export function migrateLegacyTransactions(raw: LegacyTransaction[]): PersistedSt
     openingBalance: moneyFromCents(0),
     archived: false,
   }));
-  const categories: Category[] = Array.from(new Set(raw.map((item) => item.category))).map((name, index) => ({
-    id: `legacy-category-${index + 1}`,
-    name,
-    type: name === "Ingreso" ? "income" : "expense",
-    archived: false,
-  }));
+  const categories: Category[] = Array.from(new Set(raw.map((item) => item.category))).map((name) => {
+    const type = name === "Ingreso" ? "income" : "expense";
+    const existing = existingCategories.find((category) => category.name === name && (category.type === type || category.type === "both"));
+    return existing ?? { id: stableCategoryId(name, type), name, type, archived: false };
+  });
   const accountIdFor = (name: string) => accounts.find((account) => account.name === name)?.id;
   const categoryIdFor = (name: string) => categories.find((category) => category.name === name)?.id;
   const transactions: Transaction[] = raw.map((item) => {
@@ -148,8 +148,8 @@ export async function migrateLegacyLocalStorage(storage: Storage = window.localS
   const raw = storage.getItem("glitchbudget.transactions");
   if (!raw) return false;
   try {
-    const incoming = migrateLegacyTransactions(JSON.parse(raw) as LegacyTransaction[]);
     const current = await readState();
+    const incoming = migrateLegacyTransactions(JSON.parse(raw) as LegacyTransaction[], current.categories);
     const currentTransactionIds = new Set(current.transactions.map((transaction) => transaction.id));
     const newTransactions = incoming.transactions.filter((transaction) => !currentTransactionIds.has(transaction.id));
     const newAccounts = incoming.accounts.filter((account) => !current.accounts.some((item) => item.id === account.id));

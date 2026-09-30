@@ -1,4 +1,5 @@
-import type { Account, AccountKind, Category, FinanceState, Transaction, TransactionKind } from "@/domain/entities";
+import type { Account, AccountKind, Category, CategoryType, FinanceState, Transaction, TransactionKind } from "@/domain/entities";
+import { stableCategoryId } from "@/domain/categories";
 import { accountBalance } from "@/domain/ledger";
 import { defaultLedgerPolicies, type LedgerPolicies } from "@/domain/policies";
 import { moneyFromMajorUnits } from "@/domain/money";
@@ -23,6 +24,12 @@ export type AccountInput = {
   name: string;
   kind: AccountKind;
   openingBalance?: number;
+};
+
+export type CategoryInput = {
+  id?: string;
+  name: string;
+  type: CategoryType;
 };
 
 function assertPositiveAmount(amount: number) {
@@ -159,6 +166,16 @@ export async function archiveCategory(id: string): Promise<CommandResult> {
   const category = await db.categories.get(id);
   if (!category) throw new Error("La categoría no existe");
   await db.categories.put({ ...category, archived: true });
+  return { id };
+}
+
+export async function createCategory(input: CategoryInput): Promise<CommandResult> {
+  const name = input.name.trim();
+  if (!name) throw new Error("La categoría necesita un nombre");
+  const id = input.id ?? stableCategoryId(name, input.type);
+  const existing = await db.categories.get(id);
+  if (existing) return { id };
+  await db.categories.add({ id, name, type: input.type, archived: false });
   return { id };
 }
 

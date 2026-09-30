@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { archiveAccount, createExpense, createIncome, createTransfer, renameCategory } from "@/application/commands";
+import { archiveAccount, createCategory, createExpense, createIncome, createTransfer, renameCategory } from "@/application/commands";
+import { migrateLegacyTransactions } from "@/persistence/db";
 import { deriveMetrics } from "@/domain/ledger";
 import { moneyFromCents } from "@/domain/money";
 import { db, readState, replaceState } from "@/persistence/db";
@@ -60,5 +61,14 @@ describe("Phase 3 · shared commands", () => {
     expect(current.accounts.find((account) => account.id === "qik")?.archived).toBe(true);
     expect(current.categories.find((category) => category.id === "food")?.name).toBe("Comida");
     expect(current.categories.find((category) => category.id === "food")?.id).toBe("food");
+  });
+
+  it("uses stable category IDs and preserves IDs supplied by an existing state", async () => {
+    const migrated = migrateLegacyTransactions([{ id: "legacy-category", title: "Comida", category: "Supermercado", account: "Qik", date: "2026-09-28", amount: -20, kind: "Gasto" }]);
+    expect(migrated.categories[0].id).toBe("category-expense-supermercado");
+    const preserved = migrateLegacyTransactions([{ id: "legacy-category-2", title: "Comida", category: "Supermercado", account: "Qik", date: "2026-09-28", amount: -20, kind: "Gasto" }], [{ id: "legacy-existing", name: "Supermercado", type: "expense", archived: false }]);
+    expect(preserved.categories[0].id).toBe("legacy-existing");
+    const created = await createCategory({ name: "Supermercado", type: "expense" });
+    expect(created.id).toBe("category-expense-supermercado");
   });
 });

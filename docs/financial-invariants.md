@@ -46,3 +46,7 @@ Las políticas son independientes:
 - `budgetOverspendingBehavior`: puede permitir, advertir o bloquear un gasto que supere el presupuesto vigente.
 
 Una advertencia de presupuesto no altera el ledger ni convierte el gasto en una operación distinta; solo informa al usuario. Archivar cuentas y categorías conserva sus IDs y referencias históricas.
+
+## Fase 4 — identidad de categorías
+
+Las categorías se persisten como entidades con `id`, `name`, `type` y `archived`. Los nuevos IDs se generan de forma determinista a partir del nombre normalizado y el tipo; cuando una migración encuentra una categoría existente por identidad, conserva su ID. Renombrar o archivar una categoría no reescribe los `categoryId` históricos de los movimientos.
