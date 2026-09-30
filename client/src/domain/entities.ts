@@ -3,6 +3,7 @@ import type { Money } from "./money";
 export type AccountKind = "cash" | "bank" | "credit";
 export type TransactionKind = "income" | "expense" | "transfer" | "debt-payment" | "investment";
 export type CategoryType = "income" | "expense" | "both";
+export type ExpenseClassification = "fixed" | "variable" | "occasional";
 
 export type Account = {
   id: string;
@@ -29,6 +30,7 @@ export type Transaction = {
   destinationAccountId?: string;
   categoryId?: string;
   liabilityAccountId?: string;
+  classification?: ExpenseClassification;
   note?: string;
   createdAt: string;
   updatedAt: string;

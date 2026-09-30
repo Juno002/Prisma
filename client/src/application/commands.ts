@@ -1,4 +1,4 @@
-import type { Account, AccountKind, Category, CategoryType, FinanceState, Transaction, TransactionKind } from "@/domain/entities";
+import type { Account, AccountKind, Category, CategoryType, ExpenseClassification, FinanceState, Transaction, TransactionKind } from "@/domain/entities";
 import { stableCategoryId } from "@/domain/categories";
 import { accountBalance } from "@/domain/ledger";
 import { defaultLedgerPolicies, type LedgerPolicies } from "@/domain/policies";
@@ -15,6 +15,7 @@ export type TransactionInput = {
   destinationAccountId?: string;
   liabilityAccountId?: string;
   categoryId?: string;
+  classification?: ExpenseClassification;
   note?: string;
   policies?: LedgerPolicies;
 };
@@ -97,6 +98,7 @@ async function addTransaction(kind: TransactionKind, input: TransactionInput): P
     destinationAccountId: input.destinationAccountId,
     liabilityAccountId: input.liabilityAccountId,
     categoryId: input.categoryId,
+    classification: input.classification,
     note: input.note,
     createdAt: now,
     updatedAt: now,
