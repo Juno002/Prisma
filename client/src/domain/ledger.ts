@@ -1,6 +1,8 @@
 import type { Account, FinanceState, Transaction } from "./entities";
 import { addMoney, moneyFromCents, negateMoney, subtractMoney } from "./money";
 import type { Money } from "./money";
+import type { DateRange } from "./periods";
+import { contains } from "./periods";
 
 export type LedgerMetrics = {
   liquidPosition: Money;
@@ -39,6 +41,18 @@ export function spending(transactions: Transaction[]): Money {
       .filter((transaction) => transaction.kind === "expense")
       .map((transaction) => transaction.amount),
   );
+}
+
+export function transactionsWithinPeriod(transactions: Transaction[], period: DateRange): Transaction[] {
+  return transactions.filter((transaction) => contains(period, transaction.date));
+}
+
+export function spendingInPeriod(transactions: Transaction[], period: DateRange): Money {
+  return spending(transactionsWithinPeriod(transactions, period));
+}
+
+export function budgetUsage(transactions: Transaction[], categoryId: string, period: DateRange): Money {
+  return spendingInPeriod(transactions.filter((transaction) => transaction.categoryId === categoryId), period);
 }
 
 export function cashFlow(transactions: Transaction[]): Money {

@@ -1,8 +1,5 @@
 
-## Fase 5 — actual frente a planificado
+## Fase 6 — motor de períodos
 
-- Un `Transaction` representa un hecho ocurrido y puede tener clasificación `fixed`, `variable` u `occasional`.
-- La clasificación no crea fechas futuras ni replica movimientos.
-- Una `RecurringRule` representa una intención futura y no cambia saldos, gasto ni flujo de caja.
-- No existe `frequency` dentro de una transacción real.
-- La confirmación explícita de una intención será la operación que cree un movimiento real en una fase posterior.
+Los períodos se representan como rangos explícitos `{ start, end }`. `periodContaining` acepta un día de inicio configurable; `contains`, `previousComparablePeriod` y `nextPeriod` operan sobre rangos, no sobre claves `YYYY-MM`. Presupuestos y reportes filtran movimientos por estos rangos. Con inicio el día 25, el período esperado es del 25 de agosto al 24 de septiembre.
+El motor normaliza timestamps ISO completos al día calendario antes de comparar, para que las migraciones históricas sigan entrando en el período correcto.

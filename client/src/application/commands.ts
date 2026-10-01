@@ -3,6 +3,7 @@ import { stableCategoryId } from "@/domain/categories";
 import { accountBalance } from "@/domain/ledger";
 import { defaultLedgerPolicies, type LedgerPolicies } from "@/domain/policies";
 import { moneyFromMajorUnits } from "@/domain/money";
+import { contains } from "@/domain/periods";
 import { db, readState } from "@/persistence/db";
 
 export type CommandResult = { id: string; warnings?: string[] };
@@ -64,10 +65,10 @@ function assertCanGoNegative(account: Account, amountInCents: number, transactio
 
 function budgetWarning(input: TransactionInput, state: FinanceState, amountInCents: number, policies: LedgerPolicies) {
   if (!input.categoryId || policies.budgetOverspendingBehavior === "allow") return undefined;
-  const budget = state.budgets.find((item) => item.categoryId === input.categoryId && item.periodStart <= input.date && input.date <= item.periodEnd);
+  const budget = state.budgets.find((item) => item.categoryId === input.categoryId && contains({ start: item.periodStart, end: item.periodEnd }, input.date));
   if (!budget) return undefined;
   const spent = state.transactions
-    .filter((transaction) => transaction.kind === "expense" && transaction.categoryId === input.categoryId && transaction.date >= budget.periodStart && transaction.date <= budget.periodEnd)
+    .filter((transaction) => transaction.kind === "expense" && transaction.categoryId === input.categoryId && contains({ start: budget.periodStart, end: budget.periodEnd }, transaction.date))
     .reduce((sum, transaction) => sum + transaction.amount, 0);
   if (spent + amountInCents <= budget.amount) return undefined;
   const warning = "Este movimiento supera el presupuesto de la categoría";
