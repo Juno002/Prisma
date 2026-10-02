@@ -1,5 +1,4 @@
 
-## Fase 6 — motor de períodos
+## Fase 7 — reglas recurrentes y eventos planificados
 
-Los períodos se representan como rangos explícitos `{ start, end }`. `periodContaining` acepta un día de inicio configurable; `contains`, `previousComparablePeriod` y `nextPeriod` operan sobre rangos, no sobre claves `YYYY-MM`. Presupuestos y reportes filtran movimientos por estos rangos. Con inicio el día 25, el período esperado es del 25 de agosto al 24 de septiembre.
-El motor normaliza timestamps ISO completos al día calendario antes de comparar, para que las migraciones históricas sigan entrando en el período correcto.
+Las `RecurringRule` generan `PlannedOccurrence` locales con pareja única `ruleId + scheduledDate`. Las ocurrencias pueden estar `pending`, `confirmed`, `skipped` u `overdue`; solo una ocurrencia confirmada puede enlazar una transacción, y confirmar de nuevo devuelve el mismo enlace sin duplicar el movimiento. Las frecuencias semanales y quincenales avanzan desde la fecha inicial real; las fechas 29–31 se ajustan al último día válido del mes sin perder el día ancla. El día de inicio del período se guarda en la tabla local de ajustes y se aplica al resumen.
