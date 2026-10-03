@@ -24,3 +24,10 @@ Los estados de ocurrencias planificadas usan texto e iconografía además del co
 ## Regla de evolución
 
 Las nuevas pantallas deben reutilizar `SectionHeading`, `panel`, `plan-tabs`, `mode-toggle`, `status-label` y el compositor global antes de introducir patrones nuevos.
+
+## Correcciones de cierre 7.5
+
+- El resumen consume ocurrencias persistidas para Próximos pagos; no muestra compromisos de demostración como si fueran datos reales.
+- La fecha del saludo se deriva del día actual.
+- Quick Add comienza con tipo, monto, descripción, cuenta y categoría; la clasificación avanzada se revela bajo “Más opciones”.
+- El enlace “Gestionar” de pagos planificados lleva a Plan, no a Movimientos.
