@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { confirmOccurrence, createRecurringRule } from "@/application/planned-service";
+import { confirmOccurrence, createRecurringRule, skipOccurrence } from "@/application/planned-service";
 import { generateOccurrences, datesForRule } from "@/domain/planned";
 import { moneyFromCents } from "@/domain/money";
 import type { PlannedOccurrence, RecurringRule } from "@/domain/entities";
@@ -39,6 +39,17 @@ describe("Phase 7 · recurring rules and planned occurrences", () => {
     expect(second).toMatchObject({ id: first.id, alreadyConfirmed: true });
     expect((await readState()).transactions).toHaveLength(1);
     expect((await readState()).plannedOccurrences[0].status).toBe("confirmed");
+  });
+
+  it("skips an occurrence idempotently and never creates a transaction", async () => {
+    await db.recurringRules.add({ ...rule, startsOn: "2026-10-02" });
+    await db.plannedOccurrences.add({ id: "rule-rent::2026-10-02", ruleId: rule.id, scheduledDate: "2026-10-02", status: "pending", createdAt: "2026-09-30T00:00:00Z", updatedAt: "2026-09-30T00:00:00Z" });
+    const first = await skipOccurrence("rule-rent::2026-10-02");
+    const second = await skipOccurrence("rule-rent::2026-10-02");
+    expect(first.alreadySkipped).toBe(false);
+    expect(second.alreadySkipped).toBe(true);
+    expect((await readState()).transactions).toHaveLength(0);
+    expect((await readState()).plannedOccurrences[0].status).toBe("skipped");
   });
 
   it("persists the period start day and creates the first occurrence window with a rule", async () => {

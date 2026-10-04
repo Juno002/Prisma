@@ -28,8 +28,18 @@ export async function updateOccurrenceStatus(id: string, status: Exclude<Planned
   const occurrence = await db.plannedOccurrences.get(id);
   if (!occurrence) throw new Error("La ocurrencia no existe");
   if (occurrence.status === "confirmed") throw new Error("Una ocurrencia confirmada no puede cambiar de estado");
+  if (status !== "skipped" && status !== "overdue" && status !== "pending") throw new Error("Estado de ocurrencia no válido");
   await db.plannedOccurrences.put({ ...occurrence, status, updatedAt: new Date().toISOString() });
   return { id };
+}
+
+export async function skipOccurrence(id: string) {
+  const occurrence = await db.plannedOccurrences.get(id);
+  if (!occurrence) throw new Error("La ocurrencia no existe");
+  if (occurrence.status === "confirmed") throw new Error("Una ocurrencia confirmada no puede omitirse");
+  if (occurrence.status === "skipped") return { id, alreadySkipped: true };
+  await updateOccurrenceStatus(id, "skipped");
+  return { id, alreadySkipped: false };
 }
 
 export async function confirmOccurrence(id: string) {

@@ -157,3 +157,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 
 .disclosure-button { display: inline-flex; align-items: center; gap: 5px; width: fit-content; padding: 4px 0; border: 0; color: #6c9689; background: transparent; font-size: 10px; font-weight: 800; }
 .disclosure-button svg { transition: transform .18s ease; }.disclosure-button .rotate-180 { transform: rotate(180deg); }
+
+.planned-card { flex-wrap: wrap; }
+.planned-actions { display: inline-flex; gap: 2px; margin-left: auto; }
+.planned-actions .icon-button { width: 26px; height: 26px; }
+.planned-actions .icon-button:first-child { color: #548b73; }
+.planned-actions .icon-button:last-child { color: #bb5147; }
