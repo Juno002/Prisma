@@ -1,3 +1,4 @@
+import { stableCategoryId } from "@/domain/categories";
 import type { FinanceState } from "@/domain/entities";
 import { generateOccurrences } from "@/domain/planned";
 import {
@@ -9,9 +10,11 @@ import {
   type PersistedState,
 } from "@/persistence/db";
 import { periodContaining } from "@/domain/periods";
+import { moneyFromCents } from "@/domain/money";
 
 export async function loadFinanceState(seed: LegacyTransaction[]): Promise<PersistedState> {
   await migrateLegacyLocalStorage();
+  await ensureStarterCatalog();
   const current = await readState();
   if (current.transactions.length > 0 || current.accounts.length > 0 || current.recurringRules.length > 0) {
     await ensureUpcomingOccurrences(current);
@@ -23,6 +26,28 @@ export async function loadFinanceState(seed: LegacyTransaction[]): Promise<Persi
   });
   await ensureUpcomingOccurrences(await readState());
   return readState();
+}
+
+async function ensureStarterCatalog(): Promise<void> {
+  const [accounts, categories] = await Promise.all([db.accounts.toArray(), db.categories.toArray()]);
+  const starterCategories = [
+    { name: "Alimentación", type: "expense" as const },
+    { name: "Transporte", type: "expense" as const },
+    { name: "Vivienda", type: "expense" as const },
+    { name: "Otros", type: "expense" as const },
+    { name: "Ingreso", type: "income" as const },
+  ];
+  const missingCategories = starterCategories
+    .filter((candidate) => !categories.some((category) => category.name === candidate.name && category.type === candidate.type))
+    .map((candidate) => ({ id: stableCategoryId(candidate.name, candidate.type), ...candidate, archived: false }));
+  const missingAccount = accounts.length === 0
+    ? [{ id: "account-cash-default", name: "Efectivo", kind: "cash" as const, openingBalance: moneyFromCents(0), archived: false }]
+    : [];
+  if (!missingCategories.length && !missingAccount.length) return;
+  await db.transaction("rw", db.accounts, db.categories, async () => {
+    if (missingAccount.length) await db.accounts.bulkAdd(missingAccount);
+    if (missingCategories.length) await db.categories.bulkAdd(missingCategories);
+  });
 }
 
 export async function ensureUpcomingOccurrences(state: PersistedState, today = new Date().toISOString().slice(0, 10)): Promise<void> {

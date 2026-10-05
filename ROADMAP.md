@@ -549,3 +549,10 @@ Una fase solo está terminada cuando:
 - se detuvo el trabajo para revisión antes de comenzar la fase siguiente.
 
 > El roadmap exige explícitamente trabajar fase por fase y detenerse en cada gate. Este plan conserva esa restricción: no es una instrucción para implementar todo en una sola pasada.
+
+## 13. Estado de implementación — 2026-10-05
+
+- **Fases 0–7.5:** implementadas y verificadas con pruebas, build y auditoría estática de privacidad.
+- **Fase 7.5 / UX móvil:** completada en la superficie actual: navegación inferior, FAB, menú lateral móvil, movimientos, presupuestos, metas, reglas y reportes conectados a Dexie.
+- **Fase 8:** iniciada. Backup JSON v5, importación/exportación y migraciones heredadas están disponibles; queda como siguiente gate formal ampliar migraciones explícitas por versión y pruebas de restauración en una base temporal aislada.
+- **Regla de continuación:** no marcar Fase 8 como completa hasta validar migración versionada, restauración aislada y equivalencia de selectores derivados.

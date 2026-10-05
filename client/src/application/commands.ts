@@ -1,8 +1,8 @@
-import type { Account, AccountKind, Category, CategoryType, ExpenseClassification, FinanceState, Transaction, TransactionKind } from "@/domain/entities";
+import type { Account, AccountKind, Budget, Category, CategoryType, ExpenseClassification, FinanceState, Goal, Transaction, TransactionKind } from "@/domain/entities";
 import { stableCategoryId } from "@/domain/categories";
 import { accountBalance } from "@/domain/ledger";
 import { defaultLedgerPolicies, type LedgerPolicies } from "@/domain/policies";
-import { moneyFromMajorUnits } from "@/domain/money";
+import { moneyFromCents, moneyFromMajorUnits } from "@/domain/money";
 import { contains } from "@/domain/periods";
 import { db, readState } from "@/persistence/db";
 
@@ -187,5 +187,56 @@ export async function renameCategory(id: string, name: string): Promise<CommandR
   if (!category) throw new Error("La categoría no existe");
   if (!name.trim()) throw new Error("La categoría necesita un nombre");
   await db.categories.put({ ...category, name: name.trim() });
+  return { id };
+}
+
+export type BudgetInput = Omit<Budget, "id"> & { id?: string };
+
+export async function createBudget(input: BudgetInput): Promise<CommandResult> {
+  if (!input.categoryId || !input.periodStart || !input.periodEnd || !Number.isInteger(input.amount) || input.amount <= 0) {
+    throw new Error("El presupuesto necesita categoría, período y un monto positivo");
+  }
+  assertDate(input.periodStart);
+  assertDate(input.periodEnd);
+  if (input.periodStart > input.periodEnd) throw new Error("El período del presupuesto no es válido");
+  const category = await db.categories.get(input.categoryId);
+  if (!category || category.archived) throw new Error("La categoría seleccionada no existe o está archivada");
+  const id = input.id ?? `budget-${crypto.randomUUID()}`;
+  await db.budgets.put({ ...input, id });
+  return { id };
+}
+
+export async function deleteBudget(id: string): Promise<CommandResult> {
+  if (!(await db.budgets.get(id))) throw new Error("El presupuesto no existe");
+  await db.budgets.delete(id);
+  return { id };
+}
+
+export type GoalInput = Omit<Goal, "id" | "allocatedAmount" | "archived"> & { id?: string; allocatedAmount?: Goal["allocatedAmount"] };
+
+export async function createGoal(input: GoalInput): Promise<CommandResult> {
+  if (!input.name.trim() || !Number.isInteger(input.targetAmount) || input.targetAmount <= 0) throw new Error("La meta necesita nombre y objetivo positivo");
+  if (input.targetDate) assertDate(input.targetDate);
+  const allocatedAmount = input.allocatedAmount ?? moneyFromCents(0);
+  if (!Number.isInteger(allocatedAmount) || allocatedAmount < 0 || allocatedAmount > input.targetAmount) throw new Error("La asignación de la meta no es válida");
+  const id = input.id ?? `goal-${crypto.randomUUID()}`;
+  await db.goals.add({ id, name: input.name.trim(), targetAmount: input.targetAmount, allocatedAmount, targetDate: input.targetDate, archived: false });
+  return { id };
+}
+
+export async function updateGoal(id: string, patch: Partial<Pick<Goal, "name" | "targetAmount" | "allocatedAmount" | "targetDate">>): Promise<CommandResult> {
+  const goal = await db.goals.get(id);
+  if (!goal) throw new Error("La meta no existe");
+  const next = { ...goal, ...patch };
+  if (!next.name.trim() || !Number.isInteger(next.targetAmount) || next.targetAmount <= 0 || !Number.isInteger(next.allocatedAmount) || next.allocatedAmount < 0 || next.allocatedAmount > next.targetAmount) throw new Error("Los datos de la meta no son válidos");
+  if (next.targetDate) assertDate(next.targetDate);
+  await db.goals.put(next);
+  return { id };
+}
+
+export async function archiveGoal(id: string): Promise<CommandResult> {
+  const goal = await db.goals.get(id);
+  if (!goal) throw new Error("La meta no existe");
+  await db.goals.put({ ...goal, archived: true });
   return { id };
 }

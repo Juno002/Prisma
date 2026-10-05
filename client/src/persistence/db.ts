@@ -97,7 +97,9 @@ export function migrateLegacyTransactions(raw: LegacyTransaction[], existingCate
   return { accounts, categories, transactions, budgets: [], goals: [], recurringRules: [], plannedOccurrences: [], periodSettings: defaultPeriodSettings };
 }
 
-export async function migrateLegacyLocalStorage(storage: Storage = window.localStorage): Promise<boolean> {
-  const raw = storage.getItem("glitchbudget.transactions"); if (!raw) return false;
+export async function migrateLegacyLocalStorage(storage?: Storage): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const source = storage ?? window.localStorage;
+  const raw = source.getItem("glitchbudget.transactions"); if (!raw) return false;
   try { const current = await readState(); const incoming = migrateLegacyTransactions(JSON.parse(raw) as LegacyTransaction[], current.categories); const currentTransactionIds = new Set(current.transactions.map((transaction) => transaction.id)); const newTransactions = incoming.transactions.filter((transaction) => !currentTransactionIds.has(transaction.id)); const newAccounts = incoming.accounts.filter((account) => !current.accounts.some((item) => item.id === account.id)); const newCategories = incoming.categories.filter((category) => !current.categories.some((item) => item.id === category.id)); if (!newTransactions.length && !newAccounts.length && !newCategories.length) return false; await db.transaction("rw", db.accounts, db.categories, db.transactions, async () => { await Promise.all([db.accounts.bulkAdd(newAccounts), db.categories.bulkAdd(newCategories), db.transactions.bulkAdd(newTransactions)]); }); return true; } catch { return false; }
 }
