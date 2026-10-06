@@ -554,5 +554,6 @@ Una fase solo está terminada cuando:
 
 - **Fases 0–7.5:** implementadas y verificadas con pruebas, build y auditoría estática de privacidad.
 - **Fase 7.5 / UX móvil:** completada en la superficie actual: navegación inferior, FAB, menú lateral móvil, movimientos, presupuestos, metas, reglas y reportes conectados a Dexie.
-- **Fase 8:** iniciada. Backup JSON v5, importación/exportación y migraciones heredadas están disponibles; queda como siguiente gate formal ampliar migraciones explícitas por versión y pruebas de restauración en una base temporal aislada.
+- **Fase 8:** en progreso. Se añadió migración/validación explícita de backup v4 → v5, rechazo de contratos futuros o inválidos y regresiones de importación. Queda como siguiente gate formal la restauración en una base temporal aislada y la equivalencia de selectores derivados.
+- **Referencia de motor:** `Juno002/Glitchbudget-pro@6369dcf` fue auditado. Sus capacidades se trasladarán por contratos y fases, no mediante una copia literal de su stack Next.js.
 - **Regla de continuación:** no marcar Fase 8 como completa hasta validar migración versionada, restauración aislada y equivalencia de selectores derivados.

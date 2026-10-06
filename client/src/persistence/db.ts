@@ -3,6 +3,7 @@ import { stableCategoryId } from "@/domain/categories";
 import type { Account, Budget, Category, FinanceState, Goal, PeriodSettings, PlannedOccurrence, RecurringRule, Transaction } from "@/domain/entities";
 import { defaultPeriodSettings } from "@/domain/periods";
 import { moneyFromCents, moneyFromMajorUnits } from "@/domain/money";
+import { migrateAndValidateBackup } from "./backup-migrations";
 
 export const BACKUP_VERSION = 5;
 
@@ -68,15 +69,8 @@ export async function exportBackup(): Promise<BackupV5> {
 }
 
 function normalizeBackup(input: unknown): PersistedState & { backupVersion: number } {
-  if (!input || typeof input !== "object") throw new Error("Backup inválido");
-  const candidate = input as Partial<BackupV4> & Partial<BackupV5>;
-  if (candidate.app !== "glitchbudget-pro" || ![4, 5].includes(candidate.backupVersion ?? 0) || candidate.moneyUnit !== "cents") throw new Error("Versión de backup no compatible");
-  for (const key of ["accounts", "categories", "transactions", "budgets", "goals"] as const) if (!Array.isArray(candidate[key])) throw new Error(`Backup inválido: falta ${key}`);
-  return {
-    accounts: candidate.accounts!, categories: candidate.categories!, transactions: candidate.transactions!, budgets: candidate.budgets!, goals: candidate.goals!,
-    recurringRules: Array.isArray(candidate.recurringRules) ? candidate.recurringRules : [], plannedOccurrences: Array.isArray(candidate.plannedOccurrences) ? candidate.plannedOccurrences : [], periodSettings: candidate.periodSettings ?? defaultPeriodSettings,
-    backupVersion: candidate.backupVersion!,
-  };
+  const migrated = migrateAndValidateBackup(input);
+  return { ...migrated, backupVersion: migrated.backupVersion };
 }
 
 export async function importBackup(input: unknown): Promise<BackupV5> {
