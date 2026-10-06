@@ -556,4 +556,5 @@ Una fase solo está terminada cuando:
 - **Fase 7.5 / UX móvil:** completada en la superficie actual: navegación inferior, FAB, menú lateral móvil, movimientos, presupuestos, metas, reglas y reportes conectados a Dexie.
 - **Fase 8:** en progreso. Se añadió migración/validación explícita de backup v4 → v5, rechazo de contratos futuros o inválidos y regresiones de importación. Queda como siguiente gate formal la restauración en una base temporal aislada y la equivalencia de selectores derivados.
 - **Referencia de motor:** `Juno002/Glitchbudget-pro@6369dcf` fue auditado. Sus capacidades se trasladarán por contratos y fases, no mediante una copia literal de su stack Next.js.
+- **Composición editorial premium:** iniciada en Reportes. El primer checkpoint añade jerarquía editorial, tendencia local, donut dinámico, comparación contextual y microanimaciones con soporte de movimiento reducido. Se documenta en `docs/roadmap/reports-editorial-composition.md`.
 - **Regla de continuación:** no marcar Fase 8 como completa hasta validar migración versionada, restauración aislada y equivalencia de selectores derivados.
